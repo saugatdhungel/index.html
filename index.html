@@ -1,159 +1,653 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>OpenLive — Public Stream</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b1020">
+<title>OpenLive - Live Streaming</title>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
 <style>
-:root{--bg:#080d19;--panel:#111a2c;--line:#293752;--text:#f4f7ff;--muted:#a8b5cc;--accent:#ff3158;--blue:#426bff}
-*{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#14213c,#080d19 55%);color:var(--text);font:16px system-ui,-apple-system,Segoe UI,Arial,sans-serif;min-height:100vh}
-header{max-width:1100px;margin:auto;padding:18px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);gap:12px}.brand{font-size:1.2rem;font-weight:900;letter-spacing:.4px}.brand b{color:var(--accent)}.pill{border:1px solid var(--line);border-radius:30px;padding:7px 11px;color:var(--muted);font-size:.82rem}.wrap{max-width:1100px;margin:24px auto;padding:0 16px;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(270px,1fr);gap:18px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden;min-width:0}.screen{aspect-ratio:16/9;background:#03060c;position:relative;display:grid;place-items:center}.screen video{width:100%;height:100%;object-fit:contain;display:none}.placeholder{text-align:center;color:var(--muted);padding:20px}.placeholder .emoji{font-size:3rem}.livebadge{position:absolute;left:12px;top:12px;border-radius:8px;background:#202b42;padding:6px 10px;font-size:.78rem;font-weight:900}.livebadge.on{background:var(--accent)}.inside{padding:16px}.row{display:flex;flex-wrap:wrap;gap:9px}button,.btn{font:inherit;font-size:.9rem;font-weight:750;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:#24314d;color:white;cursor:pointer}button.primary{background:var(--accent);border-color:var(--accent)}button.blue{background:var(--blue);border-color:var(--blue)}button:disabled{opacity:.45;cursor:not-allowed}label{display:block;margin:14px 0 6px;color:#d7e0f2;font-size:.88rem}input,textarea{width:100%;border:1px solid var(--line);border-radius:10px;background:#080f20;color:white;padding:11px;font:inherit}textarea{min-height:70px;resize:vertical}.muted{color:var(--muted);font-size:.88rem;line-height:1.5}.status{padding:11px;border:1px solid var(--line);border-radius:11px;background:#091122;color:var(--muted);font-size:.86rem;line-height:1.5;margin-bottom:12px;overflow-wrap:anywhere}.sharelink{display:flex;gap:7px}.sharelink input{min-width:0}.note{max-width:1100px;padding:0 16px;margin:0 auto 28px;color:var(--muted);font-size:.85rem;line-height:1.6}.hidden{display:none!important}.viewmode{grid-template-columns:1fr;max-width:900px}.viewmode .sidebar{display:none}.viewmode .watchonly{display:block}.watchonly{display:none}@media(max-width:760px){.wrap{grid-template-columns:1fr;margin-top:15px}header{padding:15px}.row button{flex:1 1 42%}.inside{padding:14px}}
+*{box-sizing:border-box}
+body{
+  margin:0;font-family:Arial,sans-serif;
+  background:#0b1020;color:#fff
+}
+header{
+  padding:20px;background:#141b30;text-align:center;
+  border-bottom:1px solid #29334d
+}
+header h1{margin:0;color:#64e5b5}
+header p{color:#aebbd3;margin-bottom:0}
+main{max-width:900px;margin:auto;padding:16px}
+.card{
+  background:#141b30;border:1px solid #29334d;
+  border-radius:15px;padding:18px;margin-bottom:18px
+}
+h2{font-size:20px;margin-top:0}
+video{
+  display:block;width:100%;max-height:480px;
+  background:#000;border-radius:12px;
+  margin:12px 0;object-fit:contain
+}
+button,input{
+  font-size:15px;border-radius:9px;
+  padding:12px;margin:5px 0
+}
+button{
+  border:0;background:#64e5b5;color:#07140f;
+  font-weight:bold;cursor:pointer
+}
+button:disabled{opacity:.5;cursor:not-allowed}
+input{
+  width:100%;background:#080d19;color:#fff;
+  border:1px solid #3b4864
+}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.row button{flex:1;min-width:125px}
+.secondary{background:#293650;color:#fff}
+.screen-btn{background:#a796ff;color:#100b24}
+.danger{background:#fa626d;color:#fff}
+.status{color:#64e5b5;overflow-wrap:anywhere;line-height:1.6}
+.small{color:#aebbd3;font-size:13px;line-height:1.7}
+.tag{
+  display:inline-block;padding:5px 10px;border-radius:20px;
+  background:#26334b;color:#64e5b5;font-size:12px
+}
+footer{text-align:center;color:#aebbd3;padding:20px;font-size:13px}
 </style>
 </head>
+
 <body>
-<header><div class="brand">OPEN<b>LIVE</b></div><div class="pill" id="modePill">HOST STUDIO</div></header>
-<main class="wrap" id="layout">
-<section class="panel">
- <div class="screen">
-  <video id="video" autoplay playsinline muted></video>
-  <div class="placeholder" id="placeholder"><div class="emoji">📡</div><strong id="previewTitle">Your public live preview</strong><div class="muted">Start a stream to show video here</div></div>
-  <div class="livebadge" id="badge">OFFLINE</div>
- </div>
- <div class="inside">
-  <h2 id="streamTitleDisplay" style="font-size:1.05rem;margin:0 0 6px">My Live Stream</h2>
-  <p class="muted" id="streamDescription" style="margin-top:0">Welcome to my stream.</p>
-  <div class="row" id="hostControls">
-   <button class="primary" id="startScreen">Share Screen & Go Live</button>
-   <button class="blue" id="startCamera">Use Camera & Go Live</button>
-   <button id="mute" disabled>Mute Mic</button><button id="stop" disabled>Stop Live</button>
+<header>
+  <h1>🎥 OpenLive</h1>
+  <p>Go Live. Share Your Moment.</p>
+</header>
+
+<main>
+
+<section class="card">
+  <h2>🔗 Your Stream</h2>
+  <span class="tag">HOST</span>
+  <p class="small">Share your Stream ID or Viewer Link with your audience.</p>
+  <input id="streamId" readonly placeholder="Creating Stream ID...">
+  <div class="row">
+    <button id="copyId" class="secondary">Copy Stream ID</button>
+    <button id="copyLink" class="secondary">Copy Viewer Link</button>
   </div>
-  <div class="row watchonly"><button id="reconnect" class="blue">Reconnect to Live</button></div>
- </div>
+  <p id="status" class="status">Connecting to PeerJS...</p>
 </section>
-<aside class="panel sidebar"><div class="inside">
- <h2 style="margin:0 0 5px">Your Studio</h2><p class="muted">Set a title, start sharing, then send viewers your public link.</p>
- <label for="title">Live title</label><input id="title" maxlength="90" value="My Live Stream">
- <label for="desc">Description</label><textarea id="desc" maxlength="300">Welcome to my stream.</textarea>
- <div class="status" id="status" aria-live="polite">Connecting to the signaling service…</div>
- <label>Public viewer link</label><div class="sharelink"><input id="viewerLink" readonly placeholder="Link appears after connection"><button id="copy" disabled>Copy</button></div>
- <p class="muted">Publish this file on an HTTPS host such as GitHub Pages. Anyone with the viewer link may be able to watch while your stream is running.</p>
- <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
- <h3 style="font-size:1rem">How it works</h3><p class="muted">This demo uses PeerJS for connection signaling and WebRTC for peer-to-peer video. It has no recording or built-in chat.</p>
-</div></aside>
+
+<section class="card">
+  <h2>📷 Camera Live</h2>
+  <span class="tag">CAMERA + MICROPHONE</span>
+  <video id="cameraPreview" autoplay muted playsinline></video>
+  <div class="row">
+    <button id="startCamera">Start Camera</button>
+    <button id="goLive">Go Live</button>
+  </div>
+  <div class="row">
+    <button id="mute" class="secondary">Mute Mic</button>
+    <button id="cameraToggle" class="secondary">Turn Camera Off</button>
+    <button id="stopCamera" class="danger">Stop Camera Live</button>
+  </div>
+  <p id="cameraStatus" class="status">Camera is not started.</p>
+</section>
+
+<section class="card">
+  <h2>🖥️ Screen Share</h2>
+  <span class="tag">SCREEN / APP / GAME</span>
+  <p class="small">
+    Select your screen using the system sharing dialog if your browser
+    supports it. Depending on the device, you may be able to share
+    the whole screen, another app or a browser tab.
+  </p>
+
+  <video id="screenPreview" autoplay muted playsinline></video>
+
+  <div class="row">
+    <button id="selectScreen" class="screen-btn">Select Screen</button>
+    <button id="startScreenLive" disabled>Start Screen Live</button>
+  </div>
+  <div class="row">
+    <button id="stopScreen" class="danger">Stop Screen Share</button>
+  </div>
+  <p id="screenStatus" class="status">No screen selected.</p>
+  <p class="small">
+    Note: HTML cannot force screen sharing on unsupported browsers.
+    Android may require a supported browser and system capture permission.
+    Screen audio availability also depends on your device.
+  </p>
+</section>
+
+<section class="card">
+  <h2>📺 Watch a Live Stream</h2>
+  <span class="tag">VIEWER</span>
+  <input id="hostId" placeholder="Enter Host Stream ID">
+  <div class="row">
+    <button id="watch">Join Live</button>
+    <button id="leave" class="danger">Leave Stream</button>
+  </div>
+  <video id="viewer" autoplay playsinline controls></video>
+  <p id="viewerStatus" class="status">Enter a Stream ID to watch.</p>
+</section>
+
+<section class="card">
+  <h2>ℹ️ About OpenLive</h2>
+  <p class="small">
+    OpenLive is a browser-based WebRTC streaming demo using PeerJS.
+    Media is sent directly between peers when a connection succeeds.
+    Network restrictions may prevent some connections.
+  </p>
+</section>
+
 </main>
-<div class="note">Screen sharing depends on browser/device support. Many mobile browsers do not allow a website to capture another app's screen; on those devices, use Android's supported screen-sharing flow or stream from a desktop browser. This demo is for small audiences: viewers connect peer-to-peer, so your upload bandwidth is shared among viewers. For reliable public streaming at scale, use a managed WebRTC/RTMP service and a backend.</div>
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+<footer>OpenLive © 2026 · Live Streaming Demo</footer>
+
 <script>
-(() => {
- const $ = id => document.getElementById(id);
- const params = new URLSearchParams(location.search);
- const watchId = params.get('watch');
- const video = $('video');
- let peer = null, localStream = null, micMuted = false, viewerCalls = [], dataConnections = [];
- const isViewer = !!watchId;
- if (isViewer) {
-   $('layout').classList.add('viewmode'); $('modePill').textContent='VIEWER MODE';
-   $('hostControls').classList.add('hidden'); $('previewTitle').textContent='Connecting to live…';
-   $('streamTitleDisplay').textContent='Public Live Stream'; $('streamDescription').textContent='Connecting to the broadcaster.';
-   $('startScreen').disabled=true; $('startCamera').disabled=true;
- }
- function status(message){$('status').textContent=message}
- function setLive(on){$('badge').textContent=on?'LIVE':'OFFLINE';$('badge').classList.toggle('on',on)}
- function setDetails(){if(!isViewer){$('streamTitleDisplay').textContent=$('title').value.trim()||'My Live Stream';$('streamDescription').textContent=$('desc').value.trim()||'Welcome to my stream.'}}
- $('title').addEventListener('input',setDetails);$('desc').addEventListener('input',setDetails);
- function makePeer(id) {
-   return new Promise((resolve,reject)=>{
-     if(!window.Peer){reject(new Error('PeerJS failed to load. Check your internet connection.'));return}
-     const p = new Peer(id || undefined, {debug:0});
-     p.on('open', id => resolve({p,id}));
-     p.on('error', err => {status('Connection error: '+err.type+'. Refresh the page and try again.'); if(err.type==='unavailable-id')reject(err);});
-     p.on('disconnected',()=>status('Signaling disconnected. Trying to reconnect…'));
-   });
- }
- async function initHost(){
-   try{
-    const result=await makePeer(); peer=result.p;
-    const link=location.href.split('?')[0]+'?watch='+encodeURIComponent(result.id);
-    $('viewerLink').value=link;$('copy').disabled=false;
-    status('Studio ready. Start a stream, then share the viewer link.');
-    peer.on('connection', conn=>{
-      dataConnections.push(conn);
-      conn.on('open',()=>{
-       conn.send({type:'hello',title:$('title').value,description:$('desc').value});
-       if(localStream) sendStream(conn.peer);
-      });
-      conn.on('data',data=>{if(data&&data.type==='request-stream'&&localStream)sendStream(conn.peer)});
-      conn.on('close',()=>{dataConnections=dataConnections.filter(c=>c!==conn)});
+const $ = id => document.getElementById(id);
+
+let peer = null;
+let cameraStream = null;
+let screenStream = null;
+let liveStream = null;
+let liveMode = null;
+
+let hostConnections = new Map();
+let outgoingCalls = new Map();
+
+let viewerConnection = null;
+let viewerCall = null;
+let viewerCallToken = 0;
+
+const cameraPreview = $("cameraPreview");
+const screenPreview = $("screenPreview");
+const viewer = $("viewer");
+
+function status(message) {
+  $("status").textContent = message;
+}
+
+function cameraMessage(message) {
+  $("cameraStatus").textContent = message;
+}
+
+function screenMessage(message) {
+  $("screenStatus").textContent = message;
+}
+
+function viewerMessage(message) {
+  $("viewerStatus").textContent = message;
+}
+
+function peerReady() {
+  return peer && peer.open && !peer.destroyed;
+}
+
+function closeOutgoingCalls() {
+  outgoingCalls.forEach(call => {
+    try { call.close(); } catch (e) {}
+  });
+  outgoingCalls.clear();
+}
+
+function stopTracks(stream) {
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+  }
+}
+
+function sendStreamTo(viewerId) {
+  if (!peerReady() || !liveStream || !liveMode) return;
+
+  const conn = hostConnections.get(viewerId);
+  if (!conn || !conn.open) return;
+
+  // Avoid creating duplicate calls while one is active.
+  if (outgoingCalls.has(viewerId)) return;
+
+  const call = peer.call(viewerId, liveStream);
+  if (!call) return;
+
+  outgoingCalls.set(viewerId, call);
+
+  call.on("close", () => {
+    if (outgoingCalls.get(viewerId) === call) {
+      outgoingCalls.delete(viewerId);
+    }
+  });
+
+  call.on("error", err => {
+    console.error("Outgoing media call:", err);
+    if (outgoingCalls.get(viewerId) === call) {
+      outgoingCalls.delete(viewerId);
+    }
+  });
+}
+
+function broadcastStream() {
+  hostConnections.forEach((conn, id) => {
+    if (conn.open) sendStreamTo(id);
+  });
+}
+
+function setLiveStream(stream, mode) {
+  closeOutgoingCalls();
+  liveStream = stream;
+  liveMode = mode;
+  broadcastStream();
+}
+
+function clearLiveStream(mode) {
+  if (mode && liveMode !== mode) return;
+
+  closeOutgoingCalls();
+  liveStream = null;
+  liveMode = null;
+}
+
+async function startCamera() {
+  if (!navigator.mediaDevices ||
+      !navigator.mediaDevices.getUserMedia) {
+    cameraMessage("Camera unavailable. Open the HTTPS website in a supported browser.");
+    return;
+  }
+
+  try {
+    if (cameraStream) stopTracks(cameraStream);
+
+    clearLiveStream();
+    cameraStream = null;
+    cameraPreview.srcObject = null;
+
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true
     });
-   }catch(e){status('Could not connect. Check internet and reload the page. '+(e.message||''))}
- }
- function sendStream(viewerId){
-   if(!peer||!localStream)return;
-   try{const call=peer.call(viewerId,localStream);viewerCalls.push(call);call.on('error',()=>{});}
-   catch(e){status('Could not connect to a viewer: '+e.message)}
- }
- async function startCapture(screenShare){
-   if(!peer||!peer.open){status('Studio is still connecting. Wait a moment.');return}
-   try{
-     if(localStream)stopStream(false);
-     if(screenShare){
-       if(!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia){
-         status('This browser does not support website screen sharing. Try a desktop Chrome browser, or use Camera Live on this phone.');return;
-       }
-       localStream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:true});
-       // If browser provides no shared-system audio, microphone can be added when permitted.
-       if(localStream.getAudioTracks().length===0){
-         try{const mic=await navigator.mediaDevices.getUserMedia({audio:true});mic.getAudioTracks().forEach(t=>localStream.addTrack(t));}
-         catch(e){/* screen video can still be shared without microphone */}
-       }
-       localStream.getVideoTracks()[0]?.addEventListener('ended',()=>stopStream());
-     } else {
-       localStream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720}},audio:true});
-     }
-     video.srcObject=localStream;video.muted=true;video.style.display='block';$('placeholder').classList.add('hidden');
-     $('mute').disabled=false;$('stop').disabled=false;setLive(true);status('LIVE is running. Share your public viewer link with people.');
-     dataConnections.forEach(c=>{if(c.open)sendStream(c.peer)});
-   }catch(e){localStream=null;status('Could not start stream: '+e.message+'. Check camera/mic/screen permissions.')}
- }
- function stopStream(update=true){
-   if(localStream)localStream.getTracks().forEach(t=>t.stop());
-   localStream=null;video.srcObject=null;video.style.display='none';$('placeholder').classList.remove('hidden');
-   $('mute').disabled=true;$('stop').disabled=true;$('mute').textContent='Mute Mic';micMuted=false;
-   viewerCalls.forEach(c=>{try{c.close()}catch(e){}});viewerCalls=[];
-   if(update){setLive(false);status('Stream stopped. Your viewer link remains the same.')}
- }
- $('startScreen').addEventListener('click',()=>startCapture(true));
- $('startCamera').addEventListener('click',()=>startCapture(false));
- $('stop').addEventListener('click',()=>stopStream());
- $('mute').addEventListener('click',()=>{
-   if(!localStream)return;micMuted=!micMuted;localStream.getAudioTracks().forEach(t=>t.enabled=!micMuted);$('mute').textContent=micMuted?'Unmute Mic':'Mute Mic';
- });
- $('copy').addEventListener('click',async()=>{
-   try{await navigator.clipboard.writeText($('viewerLink').value);status('Viewer link copied. Send it to your viewers.')}
-   catch(e){$('viewerLink').select();status('Select and copy the viewer link manually.')}
- });
- async function initViewer(){
-   try{
-    const result=await makePeer();peer=result.p;
-    const conn=peer.connect(watchId,{reliable:true});
-    conn.on('open',()=>{conn.send({type:'request-stream'});status('Connected to broadcaster. Waiting for video…')});
-    conn.on('data',data=>{if(data&&data.type==='hello'){if(data.title)$('streamTitleDisplay').textContent=data.title;if(data.description)$('streamDescription').textContent=data.description}});
-    peer.on('call',call=>{
-      call.answer();
-      call.on('stream',remoteStream=>{
-       video.srcObject=remoteStream;video.muted=false;video.style.display='block';$('placeholder').classList.add('hidden');$('previewTitle').textContent='Waiting for stream…';setLive(true);status('You are watching live. If video does not appear, tap Reconnect.');
-       video.play().catch(()=>{status('Tap the video area or check your device media settings to start playback.')});
-      });
-      call.on('close',()=>{setLive(false);status('Broadcaster ended the stream or connection was lost.')});
-      call.on('error',()=>status('Stream connection failed. Try reconnecting.'));
+
+    cameraPreview.srcObject = cameraStream;
+    await cameraPreview.play().catch(() => {});
+
+    cameraMessage("Camera ready. Press Go Live to stream.");
+    status("Camera ready.");
+  } catch (err) {
+    cameraMessage("Camera permission failed: " + err.message);
+  }
+}
+
+function goLive() {
+  if (!peerReady()) {
+    cameraMessage("Wait until your Stream ID is ready.");
+    return;
+  }
+
+  if (!cameraStream ||
+      !cameraStream.getVideoTracks().some(t => t.readyState === "live")) {
+    cameraMessage("Press Start Camera first.");
+    return;
+  }
+
+  // Stop an existing screen stream before switching modes.
+  clearLiveStream();
+  setLiveStream(cameraStream, "camera");
+
+  cameraMessage("Camera is LIVE.");
+  screenMessage("Camera live is active.");
+  status("Camera live started.");
+}
+
+async function selectScreen() {
+  if (!navigator.mediaDevices ||
+      !navigator.mediaDevices.getDisplayMedia) {
+    screenMessage(
+      "This browser does not support screen capture. Try a supported desktop browser."
+    );
+    return;
+  }
+
+  try {
+    // Must be triggered by the user's button click.
+    const selected = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: true
     });
-    peer.on('error',err=>status('Viewer connection error: '+err.type+'. Try reconnecting.'));
-   }catch(e){status('Could not connect to the broadcaster. Check the viewer link and try again.')}
- }
- $('reconnect').addEventListener('click',()=>location.reload());
- if(isViewer)initViewer();else initHost();
- window.addEventListener('pagehide',()=>{if(localStream)localStream.getTracks().forEach(t=>t.stop());if(peer)peer.destroy()});
-})();
+
+    if (screenStream) stopTracks(screenStream);
+
+    screenStream = selected;
+    screenPreview.srcObject = screenStream;
+    await screenPreview.play().catch(() => {});
+
+    $("startScreenLive").disabled = false;
+    screenMessage("Screen selected. Press Start Screen Live.");
+
+    const videoTrack = screenStream.getVideoTracks()[0];
+
+    if (videoTrack) {
+      videoTrack.addEventListener("ended", () => {
+        stopScreenShare();
+      }, { once: true });
+    }
+  } catch (err) {
+    screenMessage(
+      "Screen selection cancelled or unavailable: " + err.message
+    );
+  }
+}
+
+function startScreenLive() {
+  if (!peerReady()) {
+    screenMessage("Wait until your Stream ID is ready.");
+    return;
+  }
+
+  if (!screenStream ||
+      !screenStream.getVideoTracks().some(
+        t => t.readyState === "live"
+      )) {
+    screenMessage("Select a screen first.");
+    return;
+  }
+
+  clearLiveStream();
+  setLiveStream(screenStream, "screen");
+
+  screenMessage("Your screen is LIVE.");
+  cameraMessage("Screen live is active.");
+  status("Screen live started.");
+}
+
+function stopScreenShare() {
+  if (liveMode === "screen") clearLiveStream("screen");
+
+  if (screenStream) stopTracks(screenStream);
+
+  screenStream = null;
+  screenPreview.srcObject = null;
+  $("startScreenLive").disabled = true;
+
+  screenMessage("Screen sharing stopped.");
+  status("Screen sharing stopped.");
+}
+
+function stopCameraLive() {
+  if (liveMode === "camera") clearLiveStream("camera");
+
+  if (cameraStream) stopTracks(cameraStream);
+
+  cameraStream = null;
+  cameraPreview.srcObject = null;
+
+  $("mute").textContent = "Mute Mic";
+  $("cameraToggle").textContent = "Turn Camera Off";
+
+  cameraMessage("Camera stopped.");
+  status("Camera stopped.");
+}
+
+function leaveViewer() {
+  viewerCallToken++;
+
+  if (viewerCall) {
+    try { viewerCall.close(); } catch (e) {}
+    viewerCall = null;
+  }
+
+  if (viewerConnection) {
+    try { viewerConnection.close(); } catch (e) {}
+    viewerConnection = null;
+  }
+
+  viewer.srcObject = null;
+  viewerMessage("You left the stream.");
+}
+
+function joinStream(hostId) {
+  hostId = hostId.trim();
+
+  if (!peerReady()) {
+    viewerMessage("Wait for the connection to be ready.");
+    return;
+  }
+
+  if (!hostId) {
+    viewerMessage("Enter a Stream ID.");
+    return;
+  }
+
+  if (hostId === peer.id) {
+    viewerMessage("You cannot watch your own stream.");
+    return;
+  }
+
+  leaveViewer();
+  $("hostId").value = hostId;
+  viewerMessage("Connecting to host...");
+
+  const conn = peer.connect(hostId);
+  viewerConnection = conn;
+
+  conn.on("open", () => {
+    if (viewerConnection !== conn) return;
+    viewerMessage("Connected. Waiting for the host to go live...");
+  });
+
+  conn.on("error", err => {
+    console.error("Viewer connection:", err);
+    if (viewerConnection === conn) {
+      viewerMessage("Connection failed. Check the Stream ID.");
+    }
+  });
+
+  conn.on("close", () => {
+    if (viewerConnection === conn) {
+      viewerConnection = null;
+      viewerMessage("Host connection closed.");
+    }
+  });
+}
+
+function setupIncomingCalls() {
+  peer.on("call", call => {
+    // Only answer media calls after joining a host.
+    if (!viewerConnection) {
+      call.close();
+      return;
+    }
+
+    if (viewerCall) {
+      try { viewerCall.close(); } catch (e) {}
+    }
+
+    viewerCall = call;
+    const token = ++viewerCallToken;
+
+    call.answer();
+
+    call.on("stream", stream => {
+      if (token !== viewerCallToken || viewerCall !== call) return;
+
+      viewer.srcObject = stream;
+      viewer.play().catch(() => {
+        viewerMessage("Stream received. Press Play if needed.");
+      });
+
+      viewerMessage("You are watching live!");
+    });
+
+    call.on("close", () => {
+      if (token !== viewerCallToken) return;
+
+      viewerCall = null;
+      viewer.srcObject = null;
+      viewerMessage("Stream ended.");
+    });
+
+    call.on("error", err => {
+      console.error("Incoming media call:", err);
+
+      if (token === viewerCallToken) {
+        viewerMessage("Stream connection failed.");
+      }
+    });
+  });
+}
+
+function createPeer() {
+  if (!window.Peer) {
+    status("PeerJS failed to load. Check your internet connection.");
+    return;
+  }
+
+  peer = new Peer();
+
+  peer.on("open", id => {
+    $("streamId").value = id;
+    status("Ready. Share your Stream ID with viewers.");
+
+    const watchId = new URLSearchParams(location.search).get("watch");
+    if (watchId) joinStream(watchId);
+  });
+
+  peer.on("connection", conn => {
+    conn.on("open", () => {
+      hostConnections.set(conn.peer, conn);
+
+      if (liveStream && liveMode) {
+        sendStreamTo(conn.peer);
+      }
+    });
+
+    conn.on("close", () => {
+      hostConnections.delete(conn.peer);
+
+      const call = outgoingCalls.get(conn.peer);
+      if (call) {
+        try { call.close(); } catch (e) {}
+        outgoingCalls.delete(conn.peer);
+      }
+    });
+
+    conn.on("error", err => {
+      console.error("Host data connection:", err);
+    });
+  });
+
+  setupIncomingCalls();
+
+  peer.on("error", err => {
+    console.error("PeerJS:", err);
+    status("Connection error: " + err.type);
+  });
+
+  peer.on("disconnected", () => {
+    status("Disconnected from signaling server. Reconnecting...");
+    if (peer && !peer.destroyed) peer.reconnect();
+  });
+}
+
+// Camera and live controls
+$("startCamera").addEventListener("click", startCamera);
+$("goLive").addEventListener("click", goLive);
+$("stopCamera").addEventListener("click", stopCameraLive);
+
+// Screen sharing controls
+$("selectScreen").addEventListener("click", selectScreen);
+$("startScreenLive").addEventListener("click", startScreenLive);
+$("stopScreen").addEventListener("click", stopScreenShare);
+
+// Viewer controls
+$("watch").addEventListener("click", () => {
+  joinStream($("hostId").value);
+});
+$("leave").addEventListener("click", leaveViewer);
+
+// Microphone toggle
+$("mute").addEventListener("click", () => {
+  if (!liveStream) {
+    status("Start a live stream first.");
+    return;
+  }
+
+  const tracks = liveStream.getAudioTracks();
+
+  if (!tracks.length) {
+    status("No audio track is available in this stream.");
+    return;
+  }
+
+  tracks.forEach(track => {
+    track.enabled = !track.enabled;
+  });
+
+  $("mute").textContent =
+    tracks[0].enabled ? "Mute Mic" : "Unmute Mic";
+});
+
+// Camera toggle (camera mode only)
+$("cameraToggle").addEventListener("click", () => {
+  if (!cameraStream || liveMode !== "camera") {
+    cameraMessage("Start camera live first.");
+    return;
+  }
+
+  const tracks = cameraStream.getVideoTracks();
+  if (!tracks.length) return;
+
+  tracks.forEach(track => {
+    track.enabled = !track.enabled;
+  });
+
+  $("cameraToggle").textContent =
+    tracks[0].enabled ? "Turn Camera Off" : "Turn Camera On";
+});
+
+// Copy Stream ID
+$("copyId").addEventListener("click", async () => {
+  const id = $("streamId").value;
+  if (!id) {
+    status("Wait for your Stream ID.");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(id);
+    status("Stream ID copied.");
+  } catch (e) {
+    $("streamId").select();
+    status("Select and copy the Stream ID manually.");
+  }
+});
+
+// Copy viewer link
+$("copyLink").addEventListener("click", async () => {
+  const id = $("streamId").value;
+  if (!id) {
+    status("Wait for your Stream ID.");
+    return;
+  }
+
+  const link = location.origin + location.pathname +
+    "?watch=" + encodeURIComponent(id);
+
+  try {
+    await navigator.clipboard.writeText(link);
+    status("Viewer link copied. Share it with viewers.");
+  } catch (e) {
+    window.prompt("Copy this viewer link:", link);
+  }
+});
+
+window.addEventListener("beforeunload", () => {
+  closeOutgoingCalls();
+  stopTracks(cameraStream);
+  stopTracks(screenStream);
+});
+
+createPeer();
 </script>
 </body>
-  </html>
+</html>
